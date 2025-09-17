@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ابزار یادگیری زبان انگلیسی با Gemini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        [type='password'] {
+            text-align: left;
+            direction: ltr;
+        }
+        /* Modal styles */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b-2 border-indigo-200">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-indigo-700">English Learning Dashboard</h1>
+                <p class="text-gray-500 mt-1">مسیر یادگیری روزانه شما با قدرت Gemini</p>
+            </div>
+            <div id="iran-time-container" class="mt-4 md:mt-0 bg-white px-4 py-2 rounded-lg shadow-sm text-center">
+                <p class="font-semibold text-indigo-600">ساعت و تاریخ ایران</p>
+                <p id="iran-time" class="text-lg font-mono tracking-wider"></p>
+            </div>
+        </header>
+
+        <!-- Settings Section -->
+        <section id="settings" class="mb-8 p-6 card">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">تنظیمات کلید API</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="api-key-input" class="block mb-2 font-semibold text-gray-600">کلید Gemini API</label>
+                            <input type="password" id="api-key-input" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="کلید خود را اینجا وارد کنید...">
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="save-key-btn" class="btn bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700">ذخیره کلید</button>
+                            <button id="test-key-btn" class="btn bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600">تست کلید</button>
+                            <button id="remove-key-btn" class="btn bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600">حذف کلید</button>
+                        </div>
+                        <div id="api-status" class="mt-3 p-3 rounded-lg text-center font-semibold"></div>
+
+                        <!-- Proxy Settings -->
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="use-proxy-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <label for="use-proxy-checkbox" class="mr-2 block text-sm text-gray-900 font-medium">
+                                    استفاده از پروکسی برای رفع خطای شبکه (CORS)
+                                </label>
+                            </div>
+                            <div id="proxy-settings" class="hidden mt-2 space-y-2">
+                                <label for="proxy-url-input" class="text-sm font-medium text-gray-600">آدرس پروکسی:</label>
+                                <input type="text" id="proxy-url-input" class="w-full p-2 border border-gray-300 rounded-lg text-left dir-ltr" value="https://cors-anywhere.herokuapp.com/">
+                                <div class="bg-red-100 border-r-4 border-red-500 text-red-800 p-3 rounded-md">
+                                    <p class="font-bold">هشدار جدی امنیتی:</p>
+                                    <p class="text-sm">استفاده از پروکسی عمومی باعث می‌شود کلید API شما از طریق یک سرور شخص ثالث ارسال شود. این کار فقط برای تست اتصال است. هرگز از این روش با کلیدهای مهم یا در محیط کاری واقعی استفاده نکنید.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="bg-yellow-100 border-r-4 border-yellow-500 text-yellow-800 p-4 rounded-lg">
+                    <h4 class="font-bold">هشدار امنیتی</h4>
+                    <p class="mt-2 text-sm">نگهداری کلید API در مرورگر خطر امنیتی دارد. این روش (رمزنگاری محلی) امنیت را افزایش می‌دهد اما ۱۰۰٪ امن نیست. برای کلیدهای حساس، توصیه می‌شود از یک سرور میانی (Backend) استفاده کنید که کلید را به صورت امن نگهداری کند.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Lesson Generation Section -->
+        <section id="lesson-generator" class="mb-8 p-6 card">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">تولید درس روزانه</h2>
+            <div class="flex items-center gap-4">
+                <label for="day-number-input" class="font-semibold">شماره روز (۱ تا ۱۸۰):</label>
+                <input type="number" id="day-number-input" min="1" max="180" value="1" class="w-24 p-2 border border-gray-300 rounded-lg text-center">
+                <button id="get-lesson-btn" class="btn bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold text-lg hover:bg-indigo-800">دریافت درس</button>
+            </div>
+        </section>
+        
+        <!-- Loading Spinner -->
+        <div id="loader" class="hidden text-center my-10">
+            <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-gray-600 font-semibold">در حال تولید محتوای درس... این ممکن است کمی طول بکشد.</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert"></div>
+
+        <!-- Lesson Content Area -->
+        <div id="lesson-content" class="hidden space-y-8">
+             <!-- Progress and Actions -->
+            <section id="progress-and-actions" class="p-6 card">
+                 <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div class="w-full md:w-2/3">
+                         <h2 class="text-2xl font-bold mb-4 text-gray-700">نمودار پیشرفت</h2>
+                         <canvas id="progress-chart"></canvas>
+                    </div>
+                     <div class="w-full md:w-1/3 text-center space-y-4">
+                         <div id="progress-metrics-display" class="bg-indigo-50 p-4 rounded-lg"></div>
+                         <button id="export-excel-btn" class="btn w-full bg-green-600 text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-green-700">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                             دانلود واژگان (Excel)
+                         </button>
+                    </div>
+                 </div>
+            </section>
+            
+            <!-- Vocabulary Section -->
+            <section id="vocabulary-section" class="p-6 card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-700">واژگان امروز</h2>
+                    <button id="create-story-btn" class="btn bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>✨ با کلمات منتخب داستان بساز</button>
+                </div>
+                <div id="vocabulary-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </section>
+
+            <!-- Grammar Section -->
+            <section id="grammar-section" class="p-6 card">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">درس‌های گرامر</h2>
+                <div id="grammar-container" class="space-y-6"></div>
+            </section>
+
+            <!-- Practice Plan Section -->
+            <section id="practice-plan-section" class="p-6 card">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">برنامه تمرینی روزانه</h2>
+                <div id="practice-plan-container" class="bg-gray-50 p-4 rounded-lg space-y-3"></div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- General Purpose Modal -->
+    <div id="gemini-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden modal-overlay">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white modal-content scale-95">
+            <div class="mt-3 text-center">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="modal-title" class="text-xl leading-6 font-bold text-gray-900">پاسخ Gemini</h3>
+                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div id="modal-content" class="mt-4 text-right prose max-w-none">
+                    <!-- Content will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        const testKeyBtn = document.getElementById('test-key-btn');
+        const removeKeyBtn = document.getElementById('remove-key-btn');
+        const apiStatus = document.getElementById('api-status');
+        const dayNumberInput = document.getElementById('day-number-input');
+        const getLessonBtn = document.getElementById('get-lesson-btn');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const lessonContent = document.getElementById('lesson-content');
+        const vocabularySection = document.getElementById('vocabulary-section');
+        const vocabularyGrid = document.getElementById('vocabulary-grid');
+        const createStoryBtn = document.getElementById('create-story-btn');
+        const grammarContainer = document.getElementById('grammar-container');
+        const practicePlanContainer = document.getElementById('practice-plan-container');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+        const progressMetricsDisplay = document.getElementById('progress-metrics-display');
+        const iranTimeEl = document.getElementById('iran-time');
+        const useProxyCheckbox = document.getElementById('use-proxy-checkbox');
+        const proxySettings = document.getElementById('proxy-settings');
+        const proxyUrlInput = document.getElementById('proxy-url-input');
+        const geminiModal = document.getElementById('gemini-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // --- State ---
+        let currentApiKey = null;
+        let currentLessonData = null;
+        let progressChart = null;
+
+        // --- Constants ---
+        const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
+
+        const SYSTEM_PROMPT = `You are an expert English teacher and language-curriculum designer for absolute beginners who must reach B2 in 6 months and then C1→C2 in the following year. Produce lesson content in structured JSON only (no extra prose). Each daily response must include 30 vocabulary items, each with: word, partOfSpeech, persianMeaning, a simple exampleSentenceEN, a literal persianTranslation of the sentence, pronunciationHint, common collocations (max 3), and a difficulty tag (A1/A2/B1/B2). Also include exactly 2 grammar items with clear explanations, step-by-step examples, and 3 micro-exercises each. Provide a short daily practice plan (speaking, listening, writing) and a progress-metrics object: {day, month, cumulative_words, target_words_total, percent_complete}. Return only JSON following the provided schema. Keep language simple and learner-friendly.`;
+        
+        // --- Crypto Functions ---
+        const b64_to_uint8 = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const uint8_to_b64 = (arr) => btoa(String.fromCharCode(...arr));
+
+        async function getDerivedKey(password, salt) {
+            const enc = new TextEncoder();
+            const passKey = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+            return await crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                passKey, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+            );
+        }
+        
+        async function storeApiKey(rawKey) {
+            try {
+                const pass = prompt("برای محافظت از کلید API، یک رمز عبور محلی وارد کنید (این رمز را به خاطر بسپارید):");
+                if (!pass) {
+                    alert("عملیات لغو شد. کلید ذخیره نشد.");
+                    return;
+                }
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const derivedKey = await getDerivedKey(pass, salt);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const enc = new TextEncoder();
+                const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, derivedKey, enc.encode(rawKey));
+                
+                localStorage.setItem("api_key_enc", uint8_to_b64(new Uint8Array(cipher)));
+                localStorage.setItem("api_key_iv", uint8_to_b64(iv));
+                localStorage.setItem("api_key_salt", uint8_to_b64(salt));
+                
+                currentApiKey = rawKey;
+                apiKeyInput.value = '********';
+                updateApiStatus('کلید API با موفقیت رمزنگاری و ذخیره شد.', 'success');
+            } catch (error) {
+                console.error("Encryption failed:", error);
+                updateApiStatus('خطا در ذخیره‌سازی کلید.', 'error');
+            }
+        }
+
+        async function loadApiKey() {
+            if (!localStorage.getItem("api_key_enc")) return null;
+            
+            const pass = prompt("برای باز کردن قفل کلید API، رمز عبور محلی خود را وارد کنید:");
+            if (!pass) {
+                alert("عملیات لغو شد.");
+                return null;
+            }
+            
+            try {
+                const salt = b64_to_uint8(localStorage.getItem("api_key_salt"));
+                const iv = b64_to_uint8(localStorage.getItem("api_key_iv"));
+                const cipher = b64_to_uint8(localStorage.getItem("api_key_enc"));
+                const derivedKey = await getDerivedKey(pass, salt);
+                
+                const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, derivedKey, cipher);
+                const decodedKey = new TextDecoder().decode(plain);
+                currentApiKey = decodedKey;
+                apiKeyInput.value = '********';
+                updateApiStatus('کلید API با موفقیت بارگذاری شد.', 'success');
+                return decodedKey;
+            } catch (e) {
+                console.error("Decryption failed:", e);
+                updateApiStatus('رمز عبور اشتباه است یا رمزگشایی شکست خورد.', 'error');
+                return null;
+            }
+        }
+        
+        function removeApiKey() {
+            localStorage.removeItem("api_key_enc");
+            localStorage.removeItem("api_key_iv");
+            localStorage.removeItem("api_key_salt");
+            currentApiKey = null;
+            apiKeyInput.value = '';
+            updateApiStatus('کلید API حذف شد.', 'info');
+        }
+        
+        // --- API Functions ---
+        function getApiUrl() {
+            let baseUrl = `${API_BASE_URL}?key=${currentApiKey}`;
+            if (useProxyCheckbox.checked && proxyUrlInput.value) {
+                let proxy = proxyUrlInput.value.trim();
+                if (proxy.endsWith('/')) {
+                    proxy = proxy.slice(0, -1);
+                }
+                return `${proxy}/${baseUrl}`;
+            }
+            return baseUrl;
+        }
+
+        async function callGemini(prompt) {
+             if (!currentApiKey) {
+                alert("لطفاً ابتدا کلید API خود را در بخش تنظیمات وارد و ذخیره کنید.");
+                return null;
+            }
+            const targetUrl = getApiUrl();
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${errorData.error.message}`);
+                }
+                const result = await response.json();
+                return result.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                alert(`خطا در ارتباط با Gemini: ${error.message}`);
+                return null;
+            }
+        }
+
+
+        async function testApiKey() {
+             if (!currentApiKey) {
+                updateApiStatus('ابتدا یک کلید API را ذخیره یا بارگذاری کنید.', 'error');
+                return;
+            }
+            updateApiStatus('در حال تست کلید...', 'info');
+            const result = await callGemini("hello");
+            if(result !== null) {
+                updateApiStatus(`تست موفقیت آمیز بود!`, 'success');
+            } else {
+                 updateApiStatus(`تست ناموفق. کنسول را برای جزئیات خطا بررسی کنید.`, 'error');
+            }
+        }
+
+        async function fetchLesson(day) {
+            if (!currentApiKey) {
+                showError("لطفاً ابتدا کلید API خود را در بخش تنظیمات وارد و ذخیره کنید.");
+                return;
+            }
+            showLoader(true, "در حال تولید محتوای درس...");
+            hideError();
+            lessonContent.classList.add('hidden');
+
+            const userPrompt = `Generate the lesson for dayNumber = ${day}. Learner level start = absolute beginner. Target: reach B2 by day 180. Today produce: 30 vocabulary items appropriate for the learner's current level, 2 grammar lessons, 3 micro-exercises per grammar, a daily practice plan, and progress metrics. Use Persian for meanings and translations. Tag each word with estimated CEFR level. Output strictly as JSON.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: {
+                    parts: [{ text: SYSTEM_PROMPT }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                }
+            };
+            
+            let attempt = 0;
+            const maxAttempts = 5;
+            const initialDelay = 2000; // 2 seconds
+            const targetUrl = getApiUrl();
+
+            while (attempt < maxAttempts) {
+                try {
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 503 && attempt < maxAttempts - 1) {
+                        const delay = initialDelay * Math.pow(2, attempt);
+                        showLoader(true, `سرور مشغول است. تلاش مجدد تا ${delay / 1000} ثانیه دیگر... (تلاش ${attempt + 1}/${maxAttempts})`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        attempt++;
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorData.error.message}`);
+                    }
+                    
+                    const result = await response.json();
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    currentLessonData = JSON.parse(jsonText);
+                    renderLesson(currentLessonData);
+                    showLoader(false);
+                    return;
+
+                } catch (error) {
+                    console.error(`Fetch Lesson Error (Attempt ${attempt + 1}):`, error);
+                    if (attempt >= maxAttempts - 1) {
+                        let detailedErrorMessage = `خطا در دریافت درس پس از ${maxAttempts} تلاش: ${error.message}.`;
+                        if (error.message.toLowerCase().includes("failed to fetch")) {
+                            detailedErrorMessage += "\nاین خطا معمولاً به دلیل مشکلات شبکه، VPN، یا مسدود شدن درخواست توسط مرورگر/فایروال رخ می‌دهد. لطفاً اتصال اینترنت و تنظیمات فیلترشکن خود را بررسی کنید و صفحه را رفرش کرده و دوباره امتحان کنید. فعال کردن گزینه پروکسی نیز ممکن است کمک کند.";
+                        }
+                        showError(detailedErrorMessage);
+                        showLoader(false);
+                        return;
+                    }
+                    const delay = initialDelay * Math.pow(2, attempt);
+                    showLoader(true, `بروز خطا. تلاش مجدد تا ${delay / 1000} ثانیه دیگر... (تلاش ${attempt + 1}/${maxAttempts})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    attempt++;
+                }
+            }
+        }
+
+        // --- Render Functions ---
+        function renderLesson(data) {
+            renderVocabulary(data.vocab);
+            renderGrammar(data.grammar);
+            renderPracticePlan(data.dailyPracticePlan);
+            renderProgress(data.progress);
+            updateProgressChart(data.progress);
+            lessonContent.classList.remove('hidden');
+        }
+
+        function renderVocabulary(vocabList) {
+            vocabularyGrid.innerHTML = '';
+            vocabList.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'border border-gray-200 p-4 rounded-lg bg-white space-y-2';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-grow">
+                            <h3 class="text-xl font-bold text-indigo-700">${item.word}</h3>
+                            <span class="text-sm font-semibold text-gray-500">${item.partOfSpeech}</span>
+                        </div>
+                        <input type="checkbox" value="${item.word}" class="vocab-checkbox h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                    </div>
+                    <p class="text-lg text-gray-800">${item.persianMeaning}</p>
+                    <p class="text-sm text-gray-500">${item.pronunciationHint || ''}</p>
+                    <div class="pt-2">
+                        <p class="font-semibold text-gray-600">مثال:</p>
+                        <p class="text-left dir-ltr font-mono text-sm bg-gray-100 p-2 rounded">${item.exampleSentenceEN}</p>
+                        <p class="text-sm text-gray-500 mt-1">${item.exampleSentenceFA}</p>
+                    </div>
+                     ${item.collocations && item.collocations.length > 0 ? `
+                    <div class="pt-2">
+                        <p class="font-semibold text-gray-600">هم‌آیی‌ها (Collocations):</p>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            ${item.collocations.map(c => `<span class="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">${c}</span>`).join('')}
+                        </div>
+                    </div>` : ''}
+                    <div class="text-right pt-2">
+                         <span class="text-xs font-bold bg-green-200 text-green-800 px-2 py-1 rounded-md">${item.levelTag}</span>
+                    </div>
+                `;
+                vocabularyGrid.appendChild(card);
+            });
+        }
+        
+        function renderGrammar(grammarList) {
+            grammarContainer.innerHTML = '';
+            grammarList.forEach((item, index) => {
+                const grammarDiv = document.createElement('div');
+                grammarDiv.className = 'border border-gray-200 p-4 rounded-lg bg-indigo-50';
+                grammarDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xl font-bold text-indigo-800">${item.title}</h3>
+                         <button data-grammar-index="${index}" class="explain-grammar-btn btn bg-indigo-200 text-indigo-800 px-3 py-1 rounded-lg text-sm font-semibold hover:bg-indigo-300">✨ توضیح بیشتر</button>
+                    </div>
+                    <p class="mb-4">${item.explanation}</p>
+                    <div class="mb-4">
+                        <h4 class="font-semibold mb-2">مثال‌ها:</h4>
+                        <ul class="list-disc list-inside space-y-1 text-left dir-ltr bg-white p-3 rounded">
+                            ${item.examples.map(ex => `<li>${ex}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">تمرین‌ها:</h4>
+                        <div class="space-y-3">
+                            ${item.microExercises.map((ex) => `
+                                <div class="bg-white p-3 rounded-lg border">
+                                    <p class="font-mono text-sm text-left dir-ltr">${ex.instruction}</p>
+                                    <button class="text-sm text-indigo-600 hover:underline mt-2 toggle-answer-btn">نمایش پاسخ</button>
+                                    <p class="hidden mt-1 p-2 bg-green-100 text-green-800 rounded text-left dir-ltr font-mono text-sm">${ex.answerKey}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                grammarContainer.appendChild(grammarDiv);
+            });
+        }
+
+        function renderPracticePlan(plan) {
+            practicePlanContainer.innerHTML = `
+                <div class="mb-4">
+                    <p><strong class="font-bold text-gray-700">مکالمه (Speaking):</strong> ${plan.speaking}</p>
+                    <p><strong class="font-bold text-gray-700">شنیداری (Listening):</strong> ${plan.listening}</p>
+                </div>
+                <div>
+                     <p class="mb-2"><strong class="font-bold text-gray-700">نوشتاری (Writing):</strong> ${plan.writing}</p>
+                     <textarea id="writing-practice-input" class="w-full p-2 border border-gray-300 rounded-lg" rows="3" placeholder="جملات خود را اینجا بنویسید..."></textarea>
+                     <button id="check-sentence-btn" class="btn mt-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">✨ جمله‌ام را بررسی کن</button>
+                     <div id="sentence-feedback" class="mt-3 p-3 rounded-lg bg-gray-100 border hidden"></div>
+                </div>
+            `;
+        }
+        
+        function renderProgress(progress) {
+            progressMetricsDisplay.innerHTML = `
+                <h3 class="text-xl font-bold text-gray-700 mb-2">وضعیت پیشرفت</h3>
+                <p><strong>روز:</strong> ${progress.day}</p>
+                <p><strong>کلمات یادگرفته شده:</strong> ${progress.cumulativeWords} از ${progress.targetWordsTotal}</p>
+                <p class="text-2xl font-bold mt-2 text-indigo-600">${progress.percentComplete}%</p>
+            `;
+        }
+        
+        function updateProgressChart(progress) {
+            const labels = Array.from({ length: 180 }, (_, i) => i + 1);
+            const data = Array(180).fill(null);
+            if (progress.day > 0) {
+                 data[progress.day - 1] = progress.cumulativeWords;
+            }
+            
+            const targetData = labels.map(day => (progress.targetWordsTotal / 180) * day);
+
+            if (progressChart) {
+                progressChart.data.datasets[0].data = data;
+                progressChart.update();
+            } else {
+                const ctx = document.getElementById('progress-chart').getContext('2d');
+                progressChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'کلمات یادگرفته شده',
+                                data: data,
+                                borderColor: 'rgb(79, 70, 229)',
+                                backgroundColor: 'rgba(79, 70, 229, 0.5)',
+                                tension: 0.1,
+                                spanGaps: true,
+                            },
+                             {
+                                label: 'مسیر هدف',
+                                data: targetData,
+                                borderColor: 'rgb(209, 213, 219)',
+                                borderDash: [5, 5],
+                                tension: 0.1,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'روند یادگیری کلمات در ۱۸۰ روز'
+                            }
+                        },
+                         scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: progress.targetWordsTotal
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // --- Utility Functions ---
+        function updateApiStatus(message, type) {
+            apiStatus.textContent = message;
+            apiStatus.className = 'mt-3 p-3 rounded-lg text-center font-semibold ';
+            switch (type) {
+                case 'success': apiStatus.classList.add('bg-green-100', 'text-green-800'); break;
+                case 'error': apiStatus.classList.add('bg-red-100', 'text-red-800'); break;
+                case 'info': apiStatus.classList.add('bg-blue-100', 'text-blue-800'); break;
+            }
+        }
+
+        function showLoader(show, message = "در حال تولید محتوای درس... این ممکن است کمی طول بکشد.") {
+            const p = loader.querySelector('p');
+            if (show) {
+                if (p) p.textContent = message;
+                loader.classList.remove('hidden');
+            } else {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.style.whiteSpace = 'pre-wrap';
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+        
+        function updateIranTime() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Asia/Tehran',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            iranTimeEl.textContent = new Intl.DateTimeFormat('fa-IR-u-nu-latn', options).format(now);
+        }
+
+        function showModal(title, content) {
+            modalTitle.textContent = title;
+            modalContent.innerHTML = content;
+            geminiModal.classList.remove('hidden');
+            setTimeout(() => {
+                geminiModal.querySelector('.modal-overlay').classList.remove('opacity-0');
+                geminiModal.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function hideModal() {
+            geminiModal.querySelector('.modal-overlay').classList.add('opacity-0');
+            geminiModal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => geminiModal.classList.add('hidden'), 300);
+        }
+
+
+        // --- Export Function ---
+        function exportToExcel() {
+            if (!currentLessonData || !currentLessonData.vocab) {
+                alert("ابتدا باید یک درس را دریافت کنید.");
+                return;
+            }
+            const dataForSheet = currentLessonData.vocab.map(v => ({
+                'Word': v.word,
+                'Part of Speech': v.partOfSpeech,
+                'Persian Meaning': v.persianMeaning,
+                'Example Sentence': v.exampleSentenceEN,
+                'Example Translation': v.exampleSentenceFA,
+                'Pronunciation': v.pronunciationHint,
+                'Collocations': v.collocations.join(', '),
+                'Level': v.levelTag
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Vocabulary");
+            
+            const today = new Date().toISOString().slice(0, 10);
+            const dayNum = String(currentLessonData.day).padStart(3, '0');
+            XLSX.writeFile(workbook, `day_${dayNum}_${today}_vocab.xlsx`);
+        }
+
+        // --- Event Listeners ---
+        saveKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key && key !== '********') {
+                storeApiKey(key);
+            } else {
+                updateApiStatus('لطفاً یک کلید API معتبر وارد کنید.', 'error');
+            }
+        });
+        
+        testKeyBtn.addEventListener('click', testApiKey);
+        removeKeyBtn.addEventListener('click', removeApiKey);
+        getLessonBtn.addEventListener('click', () => {
+            const day = dayNumberInput.value;
+            fetchLesson(day);
+        });
+        exportExcelBtn.addEventListener('click', exportToExcel);
+        useProxyCheckbox.addEventListener('change', () => {
+            proxySettings.classList.toggle('hidden', !useProxyCheckbox.checked);
+        });
+        
+        modalCloseBtn.addEventListener('click', hideModal);
+        geminiModal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                hideModal();
+            }
+        });
+
+        // Event delegation for dynamic elements
+        document.body.addEventListener('click', async (e) => {
+            // Explain Grammar Button
+            if (e.target.classList.contains('explain-grammar-btn')) {
+                const index = e.target.dataset.grammarIndex;
+                const grammarItem = currentLessonData.grammar[index];
+                const prompt = `You are a friendly English teacher. Explain the grammar rule '${grammarItem.title}' in simpler terms for an absolute beginner from Iran. The current explanation is: '${grammarItem.explanation}'. Provide more examples and use analogies if possible. Respond in Persian using Markdown for formatting.`;
+                showModal(`توضیح بیشتر: ${grammarItem.title}`, `<div class="text-center"><svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><p class="mt-2">در حال دریافت توضیح...</p></div>`);
+                const response = await callGemini(prompt);
+                if (response) {
+                    modalContent.innerHTML = marked.parse(response);
+                } else {
+                    modalContent.innerHTML = `<p class="text-red-500">متاسفانه مشکلی در دریافت پاسخ به وجود آمد.</p>`;
+                }
+            }
+            // Toggle Answer Button
+            if(e.target.classList.contains('toggle-answer-btn')) {
+                e.target.nextElementSibling.classList.toggle('hidden');
+            }
+             // Check Sentence Button
+            if (e.target.id === 'check-sentence-btn') {
+                const input = document.getElementById('writing-practice-input');
+                const feedbackDiv = document.getElementById('sentence-feedback');
+                const userSentence = input.value.trim();
+                if (!userSentence) {
+                    alert("لطفاً ابتدا جمله‌ای برای بررسی بنویسید.");
+                    return;
+                }
+                feedbackDiv.classList.remove('hidden');
+                feedbackDiv.innerHTML = `<div class="text-center"><svg class="animate-spin h-6 w-6 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><p class="mt-1 text-sm">در حال بررسی جمله...</p></div>`;
+                const prompt = `You are an expert English teacher for Persian speakers. A beginner wrote this sentence(s): '${userSentence}'. Please check it for grammatical errors, spelling, and vocabulary usage. Provide the corrected sentence(s) and a short, simple explanation of the correction(s) in Persian. If the sentence is correct, praise the student. Use Markdown for formatting.`;
+                const response = await callGemini(prompt);
+                if (response) {
+                    feedbackDiv.innerHTML = marked.parse(response);
+                } else {
+                    feedbackDiv.innerHTML = `<p class="text-red-500">متاسفانه مشکلی در دریافت پاسخ به وجود آمد.</p>`;
+                }
+            }
+        });
+
+        // Vocabulary checkbox logic
+        vocabularySection.addEventListener('change', (e) => {
+            if (e.target.classList.contains('vocab-checkbox')) {
+                const selected = vocabularyGrid.querySelectorAll('.vocab-checkbox:checked');
+                createStoryBtn.disabled = selected.length === 0;
+            }
+        });
+
+        // Create Story Button
+        createStoryBtn.addEventListener('click', async () => {
+             const selectedWords = Array.from(vocabularyGrid.querySelectorAll('.vocab-checkbox:checked')).map(cb => cb.value);
+            if (selectedWords.length === 0) {
+                alert('لطفا ابتدا حداقل یک کلمه را برای ساختن داستان انتخاب کنید.');
+                return;
+            }
+             const prompt = `You are a creative storyteller for English learners. Write a very short and simple story (around 50-70 words) for an absolute beginner. The story must include these words: ${selectedWords.join(', ')}. Highlight each of these words in the story using **word**. At the end, provide a simple Persian translation of the story. Use Markdown for formatting.`;
+            showModal('داستان با کلمات شما', `<div class="text-center"><svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><p class="mt-2">در حال نوشتن داستان...</p></div>`);
+            const response = await callGemini(prompt);
+            if (response) {
+                modalContent.innerHTML = marked.parse(response);
+            } else {
+                modalContent.innerHTML = `<p class="text-red-500">متاسفانه مشکلی در دریافت پاسخ به وجود آمد.</p>`;
+            }
+        });
+
+        // --- Initialization ---
+        function init() {
+            if (localStorage.getItem("api_key_enc")) {
+                updateApiStatus('کلید API ذخیره شده است. برای استفاده، آن را بارگذاری کنید.', 'info');
+                loadApiKey();
+            } else {
+                updateApiStatus('هیچ کلید API ذخیره نشده است.', 'info');
+            }
+            setInterval(updateIranTime, 1000);
+            updateIranTime();
+            updateProgressChart({ day: 0, targetWordsTotal: 5400 }); // Initialize empty chart
+        }
+        
+        init();
+    });
+    </script>
+</body>
+</html>
+
